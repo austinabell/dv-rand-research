@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
         // NOTE: This is only verifiable if the nonce is available and synchronized between nodes.
         // 		 This mimics what height would do for leader election in a network.
         let mut hasher = Sha256::new();
-        hasher.update(&current_randomness);
+        hasher.update(current_randomness);
         hasher.update(nonce.to_le_bytes());
         let seed: [u8; 32] = hasher.finalize().into();
 
