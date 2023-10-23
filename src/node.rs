@@ -40,6 +40,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handle_randomness(State(sk): State<Arc<SecretKey>>, body: Bytes) -> Bytes {
+	// TODO verify body is of correct length (96 bytes)
     // Arbitrarily sign the message sent in
     // NOTE: This is a terrible idea to do in any practical use case, but just to assume node is
     // following and validating what is being signed.
