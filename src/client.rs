@@ -2,6 +2,13 @@ use axum::body::Bytes;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sha2::{Digest, Sha256};
 
+fn xor_randomness(current_randomness: &mut [u8; 96], new_randomness: &Bytes) {
+    // TODO verify new randomness is of correct length
+    for (a, b) in current_randomness.iter_mut().zip(new_randomness.iter()) {
+        *a ^= b;
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // The list of node URLs
@@ -10,31 +17,40 @@ async fn main() -> anyhow::Result<()> {
     // TODO query for all public keys to verify signatures
 
     // Initialize the current randomness as all zeroes
-    let mut current_randomness: Bytes = Bytes::from(&[0u8; 32][..]);
+    let mut current_randomness = [0u8; 96];
+    let mut nonce: u32 = 0;
 
     loop {
         // Select a node based on some function of the current randomness
-        let array: [u8; 32] = Sha256::digest(&current_randomness).into();
+        // NOTE: This is only verifiable if the nonce is available and synchronized between nodes.
+        // 		 This mimics what height would do for leader election in a network.
+        let mut hasher = Sha256::new();
+        hasher.update(&current_randomness);
+        hasher.update(nonce.to_le_bytes());
+        let seed: [u8; 32] = hasher.finalize().into();
 
-        let mut rng = StdRng::from_seed(array);
+        let mut rng = StdRng::from_seed(seed);
         let random_value: usize = rng.gen();
         let node_idx = random_value % nodes.len();
         let node_url = nodes[node_idx];
 
-        // Perform HTTP request to the node
+        // Increment nonce to ensure that failed request don't send to the same node continually
+        nonce += 1;
+
+        // HTTP request to the node
         let client = reqwest::Client::new();
         let res = client
             .post(node_url.to_string() + "/sign")
-            .body(current_randomness)
+            .body(current_randomness.to_vec())
             .send()
             // TODO gracefully handle errors
             .await?;
 
-        // Assume the node returns a new random hash as a hex string
+        // Assume the node returns a new random signature
         let new_random_hash: Bytes = res.bytes().await?;
 
-        // Update the current randomness
-        current_randomness = new_random_hash;
+        // Update the current randomness by xor retrieved with previous signature
+        xor_randomness(&mut current_randomness, &new_random_hash);
 
         // Log the randomness and selected node
         println!(
@@ -43,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         );
         println!("Selected node: {}", node_url);
 
-        // Simulating continuous operation
+        // Sleep time in between requests to simulate block/round timings
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
