@@ -1,7 +1,6 @@
 mod bls;
 use bls::RandState;
 
-use anyhow::bail;
 use axum::body::Bytes;
 use futures::{stream, StreamExt};
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -18,22 +17,13 @@ struct NodeClient {
 }
 
 /// Mix the new randomness with the current randomness by performing a xor operation
-fn xor_randomness(
-    current_randomness: &mut RandState,
-    new_randomness: &Bytes,
-) -> anyhow::Result<()> {
-    // TODO verify new randomness is of correct length
-    if current_randomness.len() != new_randomness.len() {
-        bail!(
-            "randomness length mismatch, expected {} got {}",
-            current_randomness.len(),
-            new_randomness.len()
-        );
-    }
+fn xor_randomness(current_randomness: &mut RandState, new_randomness: &Bytes) {
+    // Sanity check for randomness length. This should be verified by the signature verification.
+    debug_assert_eq!(current_randomness.len(), new_randomness.len());
+
     for (a, b) in current_randomness.iter_mut().zip(new_randomness.iter()) {
         *a ^= b;
     }
-    Ok(())
 }
 
 /// Query and verify randomness
@@ -52,10 +42,12 @@ async fn query_update_randomness(
     let rand_bytes: Bytes = res.bytes().await?;
 
     // Verify signature against node's public key before updating state.
-    bls::verify_randomness_bytes(&rand_bytes, &node.pub_key, &randomness)?;
+    bls::verify_randomness_bytes(&rand_bytes, &node.pub_key, randomness)?;
 
     // Update the current randomness by xor retrieved with previous signature
-    xor_randomness(randomness, &rand_bytes)
+    xor_randomness(randomness, &rand_bytes);
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -109,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
         nonce = nonce.wrapping_add(1);
 
         // HTTP request to the node
-        if let Err(e) = query_update_randomness(&client, &selected_node, &mut rand_state).await {
+        if let Err(e) = query_update_randomness(&client, selected_node, &mut rand_state).await {
             tracing::warn!(
                 "Error sending request to {}: {:?}",
                 selected_node.address,
