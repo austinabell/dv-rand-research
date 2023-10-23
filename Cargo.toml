@@ -1,0 +1,14 @@
+[package]
+name = "threshold_bls"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "node"
+path = "src/node.rs"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+[dependencies]
