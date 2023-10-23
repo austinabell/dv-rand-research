@@ -8,10 +8,12 @@ use axum::routing::{get, post};
 use axum::Router;
 use std::env;
 use std::sync::Arc;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // TODO setup logging
+    // install global collector configured based on RUST_LOG env var.
+    tracing_subscriber::fmt::init();
 
     let port = env::var("NODE_PORT").unwrap_or_else(|_| "3000".to_string());
 
@@ -32,6 +34,10 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handle_randomness(State(sk): State<Arc<SecretKey>>, body: Bytes) -> Result<Bytes, String> {
+    info!(
+        "Received randomness to sign: {}",
+        bs58::encode(&body).into_string()
+    );
     // Arbitrarily sign the message sent in
     // NOTE: This is a terrible idea to do in any practical use case, but just to assume node is
     // following and validating what is being signed.
@@ -39,6 +45,7 @@ async fn handle_randomness(State(sk): State<Arc<SecretKey>>, body: Bytes) -> Res
 }
 
 async fn get_public_key(State(sk): State<Arc<SecretKey>>) -> Bytes {
+    info!("Received request for public key");
     // Return public key of server for verification of signatures
     Bytes::copy_from_slice(&sk.sk_to_pk().to_bytes())
 }
