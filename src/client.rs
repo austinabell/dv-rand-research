@@ -1,8 +1,11 @@
 mod bls;
+use bls::RandState;
 
+use anyhow::bail;
 use axum::body::Bytes;
 use futures::{stream, StreamExt};
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use reqwest::Client;
 use sha2::{Digest, Sha256};
 use tracing::info;
 
@@ -14,11 +17,45 @@ struct NodeClient {
     pub_key: Bytes,
 }
 
-fn xor_randomness(current_randomness: &mut [u8; 96], new_randomness: &Bytes) {
+/// Mix the new randomness with the current randomness by performing a xor operation
+fn xor_randomness(
+    current_randomness: &mut RandState,
+    new_randomness: &Bytes,
+) -> anyhow::Result<()> {
     // TODO verify new randomness is of correct length
+    if current_randomness.len() != new_randomness.len() {
+        bail!(
+            "randomness length mismatch, expected {} got {}",
+            current_randomness.len(),
+            new_randomness.len()
+        );
+    }
     for (a, b) in current_randomness.iter_mut().zip(new_randomness.iter()) {
         *a ^= b;
     }
+    Ok(())
+}
+
+/// Query and verify randomness
+async fn query_update_randomness(
+    client: &Client,
+    node: &NodeClient,
+    randomness: &mut RandState,
+) -> anyhow::Result<()> {
+    let res = client
+        .post(node.address.to_string() + "/sign")
+        .body(randomness.to_vec())
+        .send()
+        .await?;
+
+    // Read bytes from response body
+    let rand_bytes: Bytes = res.bytes().await?;
+
+    // Verify signature against node's public key before updating state.
+    bls::verify_randomness_bytes(&rand_bytes, &node.pub_key, &randomness)?;
+
+    // Update the current randomness by xor retrieved with previous signature
+    xor_randomness(randomness, &rand_bytes)
 }
 
 #[tokio::main]
@@ -51,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
     let nodes: Vec<NodeClient> = bodies.collect().await;
 
     // Initialize the current randomness as all zeroes
-    let mut current_randomness = [0u8; 96];
+    let mut rand_state = [0u8; 96];
     let mut nonce: u32 = 0;
 
     loop {
@@ -59,7 +96,7 @@ async fn main() -> anyhow::Result<()> {
         // NOTE: This is only verifiable if the nonce is available and synchronized between nodes.
         // 		 This mimics what height would do for leader election in a network.
         let mut hasher = Sha256::new();
-        hasher.update(current_randomness);
+        hasher.update(rand_state);
         hasher.update(nonce.to_le_bytes());
         let seed: [u8; 32] = hasher.finalize().into();
 
@@ -71,47 +108,20 @@ async fn main() -> anyhow::Result<()> {
         // Increment nonce to ensure that failed request don't send to the same node continually
         nonce = nonce.wrapping_add(1);
 
-        // TODO refactor this out
         // HTTP request to the node
-        let res = match client
-            .post(selected_node.address.to_string() + "/sign")
-            .body(current_randomness.to_vec())
-            .send()
-            .await
-        {
-            Ok(res) => res,
-            Err(e) => {
-                tracing::warn!(
-                    "Error sending request to {}: {:?}",
-                    selected_node.address,
-                    e
-                );
-                continue;
-            }
-        };
-
-        // Read bytes from response body
-        let rand_bytes: Bytes = match res.bytes().await {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                tracing::warn!(
-                    "Error sending request to {}: {:?}",
-                    selected_node.address,
-                    e
-                );
-                continue;
-            }
-        };
-
-        bls::verify_randomness_bytes(&rand_bytes, &selected_node.pub_key, &current_randomness)?;
-
-        // Update the current randomness by xor retrieved with previous signature
-        xor_randomness(&mut current_randomness, &rand_bytes);
+        if let Err(e) = query_update_randomness(&client, &selected_node, &mut rand_state).await {
+            tracing::warn!(
+                "Error sending request to {}: {:?}",
+                selected_node.address,
+                e
+            );
+            continue;
+        }
 
         // Log the randomness and selected node
         info!(
             "Randomness updated: {}",
-            bs58::encode(&current_randomness).into_string()
+            bs58::encode(&rand_state).into_string()
         );
 
         // Sleep time in between requests to simulate block/round timings

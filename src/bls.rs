@@ -8,7 +8,7 @@ use rand::RngCore;
 
 const RAND_LEN: usize = 96;
 
-type RandOutput = [u8; RAND_LEN];
+pub(crate) type RandState = [u8; RAND_LEN];
 pub(crate) type SecretKey = blst::min_pk::SecretKey;
 type PublicKey = blst::min_pk::PublicKey;
 
@@ -38,7 +38,7 @@ pub(crate) fn sign_randomness(sk: &SecretKey, data: &Bytes) -> Result<Bytes, Str
 pub(crate) fn verify_randomness_bytes(
     rand: &Bytes,
     pub_key: &Bytes,
-    msg: &RandOutput,
+    msg: &RandState,
 ) -> anyhow::Result<()> {
     let sig = Signature::from_bytes(rand)
         .map_err(|e| anyhow!("failed to deserialize signature: {:?}", e))?;
