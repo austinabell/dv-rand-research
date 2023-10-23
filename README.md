@@ -46,6 +46,17 @@
   - Can predict message ahead of time, enables timelock encryption (decryption after specified time period)
     - Drand does timelocks through swapping G1 (pk) and G2 (sig) to be able to aggregate public key instead of signature, signatures also 50% smaller (48 bytes) as a result. Use group public key for encryption
 
+### VDF
+
+- Minimizes biasability because calculating outcome combinations would be computationally infeasible and unusable outside of very long tail of consecutive elections of the same party
+  - Concerns of usage in practice due to attack vectors and algo not being tested enough or understood to use https://ethresear.ch/t/statement-regarding-the-public-report-on-the-analysis-of-minroot/16670
+
+### Single Secret Leader Election
+
+- Increase unpredictability of leader elections through some primitive like [threshold FHE](https://eprint.iacr.org/2020/025) or [size-2 blind-and-swap](https://ethresear.ch/t/simplified-ssle/12315)
+  - Not going down this path now because threshold FHE isn't implemented (estimate 2024) and other option is theoretical and hasn't been tested in practice
+  - If biasability of the alternative solution is concern, this can be explored
+
 <!-- ### Native VRF with election
 
 ### Threshold signatures -->
