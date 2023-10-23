@@ -1,6 +1,7 @@
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::{routing::post, Router};
+use axum::routing::{get, post};
+use axum::Router;
 // TODO benchmark this against min_sig
 use blst::min_pk::{SecretKey, Signature};
 use rand::RngCore;
@@ -26,7 +27,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Build our application with a route
     let app = Router::new()
-        .route("/", post(handle_randomness))
+        .route("/sign", post(handle_randomness))
+        .route("/public-key", get(get_public_key))
         .with_state(state.clone());
 
     // Run it with hyper
@@ -43,7 +45,15 @@ async fn handle_randomness(State(sk): State<Arc<SecretKey>>, body: Bytes) -> Byt
     // following and validating what is being signed.
     let sig: Signature = sk.sign(&body, DST, &[]);
 
-    println!("{sig:?}");
+    // Serialize the signature into bytes (compressed)
+    let sig_bytes = Bytes::copy_from_slice(&sig.to_bytes());
+    println!("signature {}", bs58::encode(&sig_bytes).into_string());
+
     // Return the encoded result
-    Bytes::copy_from_slice(&sig.to_bytes())
+    sig_bytes
+}
+
+async fn get_public_key(State(sk): State<Arc<SecretKey>>) -> Bytes {
+    // Return public key of server for verification of signatures
+    Bytes::copy_from_slice(&sk.sk_to_pk().to_bytes())
 }
