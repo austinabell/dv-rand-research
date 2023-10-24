@@ -1,0 +1,25 @@
+# Use the official Rust image
+FROM rust:latest AS builder
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Copy over your manifests and source code
+COPY ./ .
+
+# Run cargo build to compile your applications
+RUN cargo build --bin node --bin client
+
+FROM ubuntu:22.04
+RUN apt-get update && apt-get -y upgrade && apt-get install -y --no-install-recommends \
+  libssl-dev \
+  ca-certificates \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*d
+
+# Copy binaries
+COPY --from=builder /usr/src/app/target/debug/node /app/node
+COPY --from=builder /usr/src/app/target/debug/client /app/client
+
+# Expose port 3000
+EXPOSE 3000

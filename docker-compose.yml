@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  node1:
+    build:
+      dockerfile: Dockerfile.test
+    command: /app/node
+    ports:
+      - "3000:3000"
+
+  node2:
+    build:
+      dockerfile: Dockerfile.test
+    command: /app/node
+    ports:
+      - "3001:3000"
+
+  node3:
+    build:
+      dockerfile: Dockerfile.test
+    command: /app/node
+    ports:
+      - "3002:3000"
+
+  client:
+    build:
+      dockerfile: Dockerfile.test
+    environment:
+      - NODE_ADDRESSES=http://host.docker.internal:3002,http://host.docker.internal:3001,http://host.docker.internal:3000
+    command: /app/client
+    depends_on:
+      - node1
+      - node2
