@@ -49,7 +49,7 @@
 ### VDF
 
 - Minimizes biasability because calculating outcome combinations would be computationally infeasible and unusable outside of very long tail of consecutive elections of the same party
-  - Concerns of usage in practice due to attack vectors and algo not being tested enough or understood to use https://ethresear.ch/t/statement-regarding-the-public-report-on-the-analysis-of-minroot/16670
+  - Concerns of usage in practice due to attack vectors and algo not being tested enough or understood to use ([reference](https://ethresear.ch/t/statement-regarding-the-public-report-on-the-analysis-of-minroot/16670))
 
 ### Single Secret Leader Election
 

@@ -1,13 +1,12 @@
-# Use the official Rust image
 FROM rust:latest AS builder
 
 # Set the working directory
 WORKDIR /usr/src/app
 
-# Copy over your manifests and source code
+# Copy source code
 COPY ./ .
 
-# Run cargo build to compile your applications
+# Build binaries
 RUN cargo build --bin node --bin client
 
 FROM ubuntu:22.04

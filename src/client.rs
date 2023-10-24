@@ -18,7 +18,7 @@ struct NodeClient {
     pub_key: Bytes,
 }
 
-/// Mix the new randomness with the current randomness by performing a xor operation
+/// Mix the new randomness with the current randomness by performing a xor operation.
 fn xor_randomness(current_randomness: &mut RandState, new_randomness: &Bytes) {
     // Sanity check for randomness length. This should be verified by the signature verification.
     debug_assert_eq!(current_randomness.len(), new_randomness.len());
@@ -28,7 +28,7 @@ fn xor_randomness(current_randomness: &mut RandState, new_randomness: &Bytes) {
     }
 }
 
-/// Query and verify randomness
+/// Query, verify, and then update the randomness state,
 async fn query_update_randomness(
     client: &Client,
     node: &NodeClient,
@@ -121,6 +121,8 @@ async fn main() -> anyhow::Result<()> {
         );
 
         // Sleep time in between requests to simulate block/round timings
+        // NOTE: Not great simulation because it sleeps after the randomness is updated and won't be
+        //       consistent timing between "rounds", but is done for simplicity.
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
