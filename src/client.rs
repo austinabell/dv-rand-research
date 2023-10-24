@@ -1,6 +1,8 @@
 mod bls;
 use bls::RandState;
 
+mod utils;
+
 use axum::body::Bytes;
 use futures::{stream, StreamExt};
 use rand::{rngs::StdRng, Rng, SeedableRng};
@@ -114,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
         // Log the randomness and selected node
         info!(
             "Randomness updated: {}",
-            bs58::encode(&rand_state).into_string()
+            utils::short_bytes_format(&rand_state)
         );
 
         // Sleep time in between requests to simulate block/round timings

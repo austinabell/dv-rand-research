@@ -1,6 +1,7 @@
 mod bls;
-
 use bls::SecretKey;
+
+mod utils;
 
 use axum::body::Bytes;
 use axum::extract::State;
@@ -37,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
 async fn handle_randomness(State(sk): State<Arc<SecretKey>>, body: Bytes) -> Result<Bytes, String> {
     info!(
         "Received randomness to sign: {}",
-        bs58::encode(&body).into_string()
+        utils::short_bytes_format(&body)
     );
     // Arbitrarily sign the message sent in
     // NOTE: This is a terrible idea to do in any practical use case, but just to assume node is
