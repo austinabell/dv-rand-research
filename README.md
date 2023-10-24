@@ -7,7 +7,7 @@
 - Distributed generation of randomness
   - Either through threshold signatures or some election of randomness generation
 
-## Why a VRF?
+## Why distributed randomness?
 
 - Randomness for leader election protocols
 - Randomness oracle to use in computation
@@ -16,10 +16,10 @@
 - Verifiable randomness for commitments in zero-knowledge proofs
 - Private nonce generation to increase security of signatures like schnorr, making reverse-engineering signatures infeasible
 
-## Use of randomness in protocols
+## Examples of randomness for leader elections
 
 - Ethereum (Beacon chain): RANDAO like randomness with BLS signature that gets `xor`ed with the previous seed
-  - https://github.com/ethereum/annotated-spec/blob/master/phase0/beacon-chain.md#aside-randao-seeds-and-committee-generation
+  - [spec](https://github.com/ethereum/annotated-spec/blob/master/phase0/beacon-chain.md#aside-randao-seeds-and-committee-generation) and [book](https://eth2book.info/capella/part2/building_blocks/randomness/) links
   - One bit of manipulation power (produce or not produce block and sac reward)
   - BLS signatures deterministic/unique signing means it can't be gamed/grinded
 - NEAR: Block producers generate VRF based on 25519 generated using the previous block's hash of the vrf value
@@ -57,14 +57,44 @@
   - Not going down this path now because threshold FHE isn't implemented (estimate 2024) and other option is theoretical and hasn't been tested in practice
   - If biasability of the alternative solution is concern, this can be explored
 
-<!-- ### Native VRF with election
+## Choices in PoC code
 
-### Threshold signatures -->
+Overall choices were made to be a very simplified approach to how randomness for leader elections would be.
 
-## Installation
+- Chained randomness: Randomness is mixed with previous randomness, because assuming a single "block producer", randomness would be easily predictable if not
+- BLS signatures: Chosen just to closely match Eth2, library maturity, and to be able to experiment with swapping G1 and G2
+  - Kept signatures in G2 with public key in G1 because in practice we would want to keep the public keys stored as minimally sized as possible. Also allows for aggregating the signatures and provides more bytes for the randomness output
+  - Signature used as dual purpose for random output and proof where a VRF would have those be separate
+- Leader (node) chosen to provide randomness to "randao" state by hashing the current state and an increasing nonce and selecting an index modulo the number of nodes
+  - Nonce in this case mimics a block height to rotate the leader in case of an error or no response from the node to avoid network from stalling
+- `client` bin in this crate just simulates what consensus would agree on. Nodes in the PoC are not synced over a p2p network for simplicity and just serve data over a REST API.
 
-<!-- TODO -->
+### Future Options
+
+- Switch nodes to synchronizing over p2p network, maybe select rounds based on NTP time like drand and do leader election based on this
+- Compare and benchmark this approach with a threshold aggregated BLS signature from all validators
+  - Would be more resilient, less biasability of randomness, but slower to generate and verify
+  - Could also compare against VRF schemes
+- Experiment with more complex latency, dropped packets, malicious nodes
+  - Measure cost of grinding (provide/abstain combinations)
+  - Explore VDF to counteract above
+- Weighted leader selection
+  - Simulate stake weighted selection
 
 ## Usage
 
-<!-- TODO -->
+Start test network with:
+
+```
+docker compose up
+```
+
+Or run each independently for a specific configuration:
+
+```
+# Node
+NODE_PORT=<PORT> cargo run --bin node
+
+# Client
+NODE_ADDRESSES="http://localhost:3000,http://localhost:3001" cargo run --bin client
+```

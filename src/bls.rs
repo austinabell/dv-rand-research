@@ -2,17 +2,17 @@
 
 use anyhow::{anyhow, bail};
 use axum::body::Bytes;
-// TODO benchmark min_pk vs min_sig
-use blst::min_pk::Signature;
+use blst_core::{PublicKey, Signature};
 use rand::RngCore;
+
+use blst::min_pk as blst_core;
 
 const RAND_LEN: usize = 96;
 
 pub(crate) type RandState = [u8; RAND_LEN];
-pub(crate) type SecretKey = blst::min_pk::SecretKey;
-type PublicKey = blst::min_pk::PublicKey;
+pub(crate) type SecretKey = blst_core::SecretKey;
 
-// TODO look into this and if it's necessary
+// Domain separation tag for BLS signatures.
 const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
 
 pub(crate) fn random_test_key() -> SecretKey {

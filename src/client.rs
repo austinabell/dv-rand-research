@@ -90,6 +90,7 @@ async fn main() -> anyhow::Result<()> {
         // Select a node based on some function of the current randomness
         // NOTE: This is only verifiable if the nonce is available and synchronized between nodes.
         // 		 This mimics what height would do for leader election in a network.
+        //       Also, the random selection would not be like this, but is done for simplicity.
         let mut hasher = Sha256::new();
         hasher.update(rand_state);
         hasher.update(nonce.to_le_bytes());
