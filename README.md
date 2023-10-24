@@ -71,11 +71,13 @@ Overall choices were made to be a very simplified approach to how randomness for
 
 ### Future Options
 
+- Hash signature for rand accumulator for more well known uniformity and convenience
 - Switch nodes to synchronizing over p2p network, maybe select rounds based on NTP time like drand and do leader election based on this
 - Compare and benchmark this approach with a threshold aggregated BLS signature from all validators
   - Would be more resilient, less biasability of randomness, but slower to generate and verify
   - Could also compare against VRF schemes
 - Experiment with more complex latency, dropped packets, malicious nodes
+  - Have epoch-based leader election and experiment network effects with malicious actors
   - Measure cost of grinding (provide/abstain combinations)
   - Explore VDF to counteract above
 - Weighted leader selection
