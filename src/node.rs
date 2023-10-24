@@ -27,6 +27,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Run it with hyper
     let addr = format!("0.0.0.0:{}", port).parse().unwrap();
+    info!("Listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;

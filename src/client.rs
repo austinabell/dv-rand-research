@@ -12,7 +12,7 @@ const CONCURRENT_REQUESTS: usize = 4;
 
 #[derive(Debug)]
 struct NodeClient {
-    address: &'static str,
+    address: String,
     pub_key: Bytes,
 }
 
@@ -56,9 +56,10 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let client = reqwest::Client::new();
-    // The list of node URLs
-    // TODO have this be specified with an environment variable
-    let nodes = ["http://localhost:3001", "http://localhost:3002"];
+
+    // Read the node addresses from NODE_ADDRESSES environment variable
+    let node_addresses = std::env::var("NODE_ADDRESSES").expect("must provide NODE_ADDRESSES");
+    let nodes: Vec<String> = node_addresses.split(',').map(From::from).collect();
 
     let bodies = stream::iter(nodes)
         .map(|address| {
